@@ -8,9 +8,10 @@ CREATE TABLE IF NOT EXISTS users (
   is_verified TINYINT(1) NOT NULL DEFAULT 0,
   otp_code VARCHAR(6) DEFAULT NULL,
   otp_expires_at DATETIME DEFAULT NULL,
-  role enum('admin', 'user') NOT NULL DEFAULT 'user',
+  role ENUM('admin', 'superadmin') NOT NULL DEFAULT 'admin',
   is_super_admin TINYINT(1) NOT NULL DEFAULT 0,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  permissions JSON NOT NULL DEFAULT (JSON_ARRAY()),
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uniq_users_email (email)

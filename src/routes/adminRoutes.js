@@ -1,18 +1,19 @@
 import { Router } from 'express';
-import { verifyToken, allowRoles } from '../middlewares/authMiddleware.js';
-import { getAdmins, deleteAdmin } from '../controllers/adminController.js';
+import { verifyToken, requiredPermission } from '../middlewares/authMiddleware.js';
+import { getAdmins, deleteAdmin, createAdmin, updateAdmin } from '../controllers/adminController.js';
 
 const router = Router();
 
-// Example: GET /api/admin/test
+router.use(verifyToken);
+router.use(requiredPermission('settings'));
+
 router.get('/test', (req, res) => {
     res.status(200).json({ success: true, message: 'Admin route works!' });
 });
 
-router.delete("/:id", verifyToken, allowRoles('superadmin'), deleteAdmin);
+router.get("/", getAdmins);
+router.post("/", createAdmin);
+router.put("/:id", updateAdmin);
+router.delete("/:id", deleteAdmin);
 
-router.get("/", verifyToken, allowRoles('admin', 'superadmin'), getAdmins);
-// router.post("/", verifyToken, allowRoles('admin', 'superadmin'), createAdmin);
-// router.put("/:id", verifyToken, allowRoles('admin', 'superadmin'), updateAdmin);
-// router.delete("/:id", verifyToken, allowRoles('admin', 'superadmin'), deleteAdmin);
 export default router;

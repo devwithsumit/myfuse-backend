@@ -4,7 +4,7 @@ import { getPool } from '../config/db.js';
 import generateOtp from '../utils/generateOtp.js';
 import { sendOtpEmail } from '../services/emailService.js';
 import { generateToken } from '../utils/generateToken.js';
-import { sanitizeUser } from '../utils/authHelpers.js';
+import { sanitizeUser, parseJsonArray } from '../utils/authHelpers.js';
 
 const SALT_ROUNDS = 10;
 const OTP_TTL_MINUTES = 5; // 5 minutes
@@ -56,9 +56,9 @@ export async function register(req, res) {
         await pool.execute(
             `INSERT INTO users (
             name, email, password_hash, is_verified,
-            otp_code, otp_expires_at, role, is_super_admin, created_at, updated_at) 
-            VALUES (?, ?, ?, 0, ?, ?, ?, ?, NOW(), NOW())`,
-            [name, normalizedEmail, passwordHash, otp, expiresAt, "admin", 1]
+            otp_code, otp_expires_at, role)
+            VALUES (?, ?, ?, 0, ?, ?, ?)`,
+            [name, normalizedEmail, passwordHash, otp, expiresAt, "admin"]
         );
 
         // Send the OTP to the email with the new password and OTP
@@ -93,14 +93,16 @@ export async function login(req, res) {
         const valid = await bcrypt.compare(password, user.password_hash);
         if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
 
-        // Generate the token
+        const permissions = parseJsonArray(user.permissions);
+
         const token = generateToken({
             id: user.id,
             role: user.role,
             isSuperAdmin: user.is_super_admin,
-            email: user.email
+            email: user.email,
+            permissions
         });
-        return res.json({ success: true, token, user: sanitizeUser(user) });
+        return res.json({ success: true, token, user: { ...sanitizeUser(user), permissions } });
 
     } catch (error) {
         return res.status(500).json({ error: 'Failed to login' });
@@ -134,16 +136,18 @@ export async function adminLogin(req, res) {
         const valid = await bcrypt.compare(password, admin.password_hash);
         if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
 
-        // Generate token
+        const permissions = parseJsonArray(admin.permissions);
+
         const token = generateToken({
             id: admin.id,
             role: admin.role,
             isSuperAdmin: admin.is_super_admin,
-            email: admin.email
+            email: admin.email,
+            permissions
         });
 
         // Return the response
-        return res.json({ success: true, token, admin: sanitizeUser(admin) });
+        return res.json({ success: true, token, admin: { ...sanitizeUser(admin), permissions } });
     }
     catch (error) {
         // Return the error
@@ -189,16 +193,25 @@ export async function verifyOtp(req, res) {
             [user.id]
         );
 
-        // Generate the token
+        const permissions = parseJsonArray(user.permissions);
+
         const token = generateToken({
             id: user.id,
             role: user.role,
             isSuperAdmin: user.is_super_admin,
-            email: user.email
+            email: user.email,
+            permissions
         });
 
         // Return the response
-        const updatedUser = { ...user, is_verified: 1, otp_code: null, otp_expires_at: null };
+        const updatedUser = {
+            ...user,
+            is_verified: 1,
+            otp_code: null,
+            otp_expires_at: null,
+            permissions,
+        };
+
         return res.json({ success: true, token, user: sanitizeUser(updatedUser) });
     } catch (error) {
         return res.status(500).json({ error: 'Failed to verify OTP' });

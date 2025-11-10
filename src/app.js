@@ -5,6 +5,7 @@ import morgan from 'morgan';
 
 import authRouter from './routes/authRoutes.js';
 import adminRouter from './routes/adminRoutes.js';
+import { requiredPermission } from './middlewares/authMiddleware.js';
 
 const app = express();
 
@@ -24,7 +25,7 @@ app.get('/api/test', (req, res) => {
 });
 
 app.use('/api/auth', authRouter);
-app.use('/api/admin', adminRouter);
+app.use('/api/admin', requiredPermission('settings'), adminRouter);
 
 app.use((req, res) => {
     res.status(404).json({ error: 'Not found' });
